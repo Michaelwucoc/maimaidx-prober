@@ -120,58 +120,6 @@ async def change_password():
     return {"message": "success"}
 
 
-@app.route("/recovery", methods=['POST'])
-async def recovery():
-    qq = request.args.get("qq", type=str, default="")
-    try:
-        player = await Player.aio_get(Player.bind_qq == qq)
-    except Exception:
-        return {"message": "重置邮件已发送到您的QQ邮箱，请按照指引进行操作"}
-    ts = int(time.time())
-    try:
-        email_reset: EmailReset = await EmailReset.aio_get((EmailReset.player == player) & (EmailReset.timeout_stamp > ts))
-        random_token = email_reset.token
-    except Exception:
-        random_token = ''.join([random.choice(string.ascii_letters + string.digits) for _ in range(128)])
-        await EmailReset.aio_create(player=player, token=random_token, timeout_stamp=1800 + int(ts))
-    asyncio.create_task(send_mail(
-        payload={
-            "sender": "舞萌 DX 查分器",
-            "to": f"{qq}@qq.com",
-            "body": f"""<p>请点击此链接来设置您的查分器账户：<a href="https://www.diving-fish.com/maimaidx/recovery?token={random_token}">网页链接</a></p>
-<p>该链接将在 30 分钟内有效，过期请重新申请。</p>""",
-            "subject": "舞萌 DX 查分器账户重置",
-            "type": "html"
-        },
-        mail_config=mail_config
-    ))
-    return {"message": "重置邮件已发送到您的QQ邮箱，请按照指引进行操作"}
-
-
-@app.route("/do_recovery", methods=['GET', 'POST'])
-async def do_recovery():
-    token = request.args.get("token", type=str, default="")
-    ts = int(time.time())
-    try:
-        email_reset: EmailReset = await EmailReset.aio_get((EmailReset.token == token) & (EmailReset.timeout_stamp > ts))
-    except Exception:
-        return {"message": "此链接无效或已过期"}, 400
-    if request.method == "GET":
-        p: Player = await Player.aio_get(Player.id == email_reset.player_id)
-        return {"username": p.username}
-    else:
-        p: Player = await Player.aio_get(Player.id == email_reset.player_id)
-        j = await request.json
-        if j["operation"] == "unbind_qq":
-            p.bind_qq = ""
-        elif j["operation"] == "reset_password":
-            p.password = md5(j["password"] + p.salt)
-        await p.aio_save()
-        email_reset.timeout_stamp = 0;
-        await email_reset.aio_save()
-        return {"message": "success"}
-
-
 @app.route('/channel_to_qq', methods=['GET', 'POST'])
 @developer_required
 async def channel_to_qq():

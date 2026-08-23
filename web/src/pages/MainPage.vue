@@ -62,7 +62,7 @@
           </v-card>
         </v-dialog>
         <vote-box :visible="true" :music_data="music_data_dict" />
-        <recovery :visible="true" />
+        <v-btn class="mt-3 mr-4" href="https://auth.diving-fish.com/forgot">忘记密码</v-btn>
         <v-dialog width="1000px" :fullscreen="$vuetify.breakpoint.mobile" v-model="dialogVisible">
           <template #activator="{ on, attrs }">
             <v-btn class="mt-3 mr-4" v-bind="attrs" v-on="on">导入数据</v-btn>
@@ -424,7 +424,6 @@ import Agreement from "../components/Agreement.vue";
 import PlateQualifier from "../components/PlateQualifier.vue";
 import Calculators from "../components/Calculators.vue";
 import Tutorial from "../components/Tutorial.vue";
-import Recovery from "../components/Recovery.vue";
 import watchVisible from "../plugins/watchVisible";
 import ChuniOverPowerCalculators from "@/components/ChuniOverPowerCalculators";
 import ScoreCoefficient from '../scripts/ScoreCoefficient';
@@ -443,7 +442,6 @@ export default {
     FilterSlider,
     ProSettings,
     Advertisement,
-    Recovery,
     Message,
     Profile,
     Agreement,
