@@ -430,6 +430,25 @@ def oauth_or_login_required(*required_scopes):
     return deco
 
 
+def oauth_optional_required(*required_scopes):
+    """仅当带 Bearer 时才校验，不影响原有公开查询方式。
+
+    带 Bearer 时通过 _auth_by_bearer 进行校验，其他情况下与不带此装饰器时一致。
+    """
+    def deco(f):
+        @wraps(f)
+        async def func(*args, **kwargs):
+            auth = request.headers.get('Authorization', default='')
+            if auth[:7].lower() == 'bearer ':
+                err = await _auth_by_bearer(auth[7:].strip(), required_scopes)
+                if err is not None:
+                    return err
+            return await f(*args, **kwargs)
+        return func
+
+    return deco
+
+
 async def is_developer(token):
     if token == "":
         return False, {"status": "error", "msg": "请先联系水鱼申请开发者token"}, 400
