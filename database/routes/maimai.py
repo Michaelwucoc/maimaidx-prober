@@ -8,7 +8,7 @@ https://www.diving-fish.com/api/maimaidxprober/*
 import asyncio
 import time
 from collections import defaultdict
-from app import app, developer_required, login_required, login_or_token_required, oauth_or_login_required, md5, is_developer, chart_stat_updated, scheduler, job_lock
+from app import app, developer_required, login_required, login_or_token_required, oauth_or_login_required, oauth_optional_required, md5, is_developer, chart_stat_updated, scheduler, job_lock
 from apscheduler.triggers.cron import CronTrigger
 from quart import Quart, request, g, make_response
 from tools._jwt import *
@@ -511,29 +511,33 @@ async def getplatelist(player, version: List[Dict]):
 
 
 @app.route("/query/player", methods=['POST'])
+@oauth_optional_required("prober.records.read")
 async def query_player():
     obj = await request.json
-    try:
-        if "qq" in obj:
-            p: Player = await Player.by_qq(obj["qq"])
-        else:
-            username = obj["username"]
-            p: Player = await Player.aio_get(Player.username == username)
-    except Exception:
-        return {
-            "message": "user not exists"
-        }, 400
-    if p.privacy or not p.accept_agreement:
+    if getattr(g, "login_type", None) == 'oauth':
+        p: Player = g.user
+    else:
         try:
-            token = decode(request.cookies['jwt_token'])
-        except KeyError:
-            return {"status": "error", "message": "已设置隐私或未同意用户协议"}, 403
-        if token == {}:
-            return {"status": "error", "message": "已设置隐私或未同意用户协议"}, 403
-        if token['exp'] < ts():
-            return {"status": "error", "message": "会话过期"}, 403
-        if token['username'] != obj["username"]:
-            return {"status": "error", "message": "已设置隐私或未同意用户协议"}, 403
+            if "qq" in obj:
+                p: Player = await Player.by_qq(obj["qq"])
+            else:
+                username = obj["username"]
+                p: Player = await Player.aio_get(Player.username == username)
+        except Exception:
+            return {
+                "message": "user not exists"
+            }, 400
+        if p.privacy or not p.accept_agreement:
+            try:
+                token = decode(request.cookies['jwt_token'])
+            except KeyError:
+                return {"status": "error", "message": "已设置隐私或未同意用户协议"}, 403
+            if token == {}:
+                return {"status": "error", "message": "已设置隐私或未同意用户协议"}, 403
+            if token['exp'] < ts():
+                return {"status": "error", "message": "会话过期"}, 403
+            if token['username'] != obj["username"]:
+                return {"status": "error", "message": "已设置隐私或未同意用户协议"}, 403
     if "b50" in obj:
         sd, dx = await get_dx_and_sd_for50(p)
         await compute_ra(p, sd, dx)
